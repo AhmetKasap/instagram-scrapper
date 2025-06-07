@@ -1,17 +1,18 @@
 import { inject, injectable } from "inversify";
 import * as puppeteer from "puppeteer";
 
-import dotenv from "dotenv";
-import { type IInstagramProfile } from "../dtos/instagram.dto";
 import type { IProfileService } from "./profile-service.interface";
 import type { ILoginService } from "./login-service.interface";
-dotenv.config();
+import {IProfileResponse } from "../dtos/profile.dto";
+import { IProfileRepository } from "../database/repositories/profile.repository";
 
 @injectable()
 export default class ProfileService implements IProfileService {
 	constructor(
 		@inject("ILoginService")
 		private readonly loginService: ILoginService,
+		@inject("IProfileRepository")
+		private readonly profileRepository: IProfileRepository,
 	) {}
 
 	private delay(ms: number): Promise<void> {
@@ -54,7 +55,10 @@ export default class ProfileService implements IProfileService {
 	}
 
 	/* Get Profile and Reels */
-	async getProfile(username: string): Promise<IInstagramProfile> {
+	async getProfile(username: string): Promise<IProfileResponse> {
+		const profileData = await this.getProfileDataIsExist(username);
+		if (profileData !== null) return profileData;
+
 		const browser = await puppeteer.launch({
 			headless: false,
 			args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -70,7 +74,7 @@ export default class ProfileService implements IProfileService {
 			await page.goto(`https://www.instagram.com/${username}/`, {
 				waitUntil: "networkidle2",
 			});
-			await this.delay(2000);
+			await this.delay(9000);
 
 			const headerText = await page.$eval("header", (el) => el.innerText);
 
@@ -87,7 +91,10 @@ export default class ProfileService implements IProfileService {
 				bio: bio,
 			});
 
-			return userData;
+			await this.saveProfileData(userData as IProfileResponse);
+
+			return userData as IProfileResponse;
+
 		} catch (err: any) {
 			console.error("Error:", err.message);
 			throw new Error(
@@ -96,5 +103,22 @@ export default class ProfileService implements IProfileService {
 		} finally {
 			await browser.close();
 		}
+	}
+
+	private async getProfileDataIsExist(username: string): Promise<IProfileResponse | null> {
+		const profile = await this.profileRepository.getModel().findOne({ username });
+		if (profile) {
+			return {
+				username: profile.username,
+				fullName: profile.fullName,
+				bio: profile.bio,
+				profilePicUrl: profile.profilePicUrl,
+			};
+		}
+		return null;
+	}
+
+	private async saveProfileData(profile: IProfileResponse): Promise<void> {
+		await this.profileRepository.getModel().create(profile);
 	}
 }

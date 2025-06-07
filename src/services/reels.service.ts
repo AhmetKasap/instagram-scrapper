@@ -1,16 +1,20 @@
 import { inject, injectable } from "inversify";
 import * as puppeteer from "puppeteer";
-import dotenv from "dotenv";
-import { type IInstagramReel } from "../dtos/instagram.dto";
 import type { ILoginService } from "./login-service.interface";
 import type { IReelsService } from "./reels-service.interface";
-dotenv.config();
+import { IReelsResponse, ISaveReelsData } from "../dtos/reels.dto";
+import  { IProfileRepository } from "../database/repositories/profile.repository";
+import { IReelsRepository } from "../database/repositories/reels.repository";
 
 @injectable()
 export default class ReelsService implements IReelsService {
 	constructor(
 		@inject("ILoginService")
 		private readonly loginService: ILoginService,
+		@inject("IProfileRepository")
+		private readonly profileRepository: IProfileRepository,
+		@inject("IReelsRepository")
+		private readonly reelsRepository: IReelsRepository,
 	) {}
 
 	private delay(ms: number): Promise<void> {
@@ -20,15 +24,18 @@ export default class ReelsService implements IReelsService {
 	async getReelsByUsername(
 		username: string,
 		postCount: number,
-	): Promise<IInstagramReel[]> {
+	): Promise<IReelsResponse[]> {
+		const reelsDataIsExist = await this.getReelsDataIsExist(username);
+		if (reelsDataIsExist !== null) return reelsDataIsExist;
+
 		const browser = await puppeteer.launch({
-			headless: true,
+			headless: false,
 			args: ["--no-sandbox", "--disable-setuid-sandbox"],
 			defaultViewport: null,
 		});
 
 		const page = await browser.newPage();
-		const reelsData: IInstagramReel[] = [];
+		const reelsData: IReelsResponse[] = [];
 
 		try {
 			await this.loginService.loginToInstagram(page);
@@ -90,8 +97,49 @@ export default class ReelsService implements IReelsService {
 			await browser.close();
 		}
 
-		console.log("reelsData", reelsData);
+		const reelsDataToSave = reelsData.map((reel) => {
+			return {
+				reelsUrl: reel.reelsUrl,
+				pubDate: reel.pubDate,
+				username: username,
+			};
+		});
 
-		return reelsData;
+		await this.saveReelsData(reelsDataToSave as ISaveReelsData[]);
+
+		return reelsData as IReelsResponse[];
+	}
+
+	private async getReelsDataIsExist(username: string): Promise<IReelsResponse[] | null> {
+		const reelsByUsername = await this.profileRepository.getModel().aggregate([
+			{
+				$match: { username },
+			},
+			{
+				$lookup: {
+					from: "reels",
+					localField: "_id",
+					foreignField: "username",
+					as: "reels",
+				},
+			},
+		]);
+		if (reelsByUsername[0].reels.length !== 0) {
+			return reelsByUsername as IReelsResponse[];
+		}
+		return null;
+	}
+
+	private async saveReelsData(saveReelsData: ISaveReelsData[]): Promise<void> {
+		const reelsData = saveReelsData.map((reel) => {
+			return {
+				reelsUrl: reel.reelsUrl,
+				pubDate: reel.pubDate,
+				username: reel.username,
+			};
+		});
+
+		await this.reelsRepository.getModel().create(reelsData as any);
+	
 	}
 }

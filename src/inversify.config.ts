@@ -16,10 +16,11 @@ import ProfileRouter from "./routers/profile.router";
 import ReelsRouter from "./routers/reels-router";
 import LoginService from "./services/login.service";
 import { ILoginService } from "./services/login-service.interface";
-import UserRepository from "./database/repositories/user.repository";
-import { IUserRepository } from "./database/repositories/user.repository";
-import RoleRepository from "./database/repositories/role.repository";
-import { IRoleRepository } from "./database/repositories/role.repository";
+import ReelsRepository from "./database/repositories/reels.repository";
+import ProfileRepository from "./database/repositories/profile.repository";
+import { IReelsRepository } from "./database/repositories/reels.repository";
+import { IProfileRepository } from "./database/repositories/profile.repository";
+
 
 
 const container = new Container({ defaultScope: "Singleton" });
@@ -28,8 +29,8 @@ const container = new Container({ defaultScope: "Singleton" });
 container.bind<IConfig>("IConfig").to(Config).inSingletonScope();
 
 // Repositories
-container.bind<IUserRepository>("IUserRepository").to(UserRepository).inSingletonScope();
-container.bind<IRoleRepository>("IRoleRepository").to(RoleRepository).inSingletonScope();
+container.bind<IProfileRepository>("IProfileRepository").to(ProfileRepository).inSingletonScope();
+container.bind<IReelsRepository>("IReelsRepository").to(ReelsRepository).inSingletonScope();
 
 // Services
 container

@@ -1,8 +1,8 @@
-import type { IInstagramReel } from "../dtos/instagram.dto";
+import type { IReelsResponse } from "../dtos/reels.dto";
 
 export interface IReelsService {
 	getReelsByUsername(
 		username: string,
 		postCount: number,
-	): Promise<IInstagramReel[]>;
+	): Promise<IReelsResponse[]>;
 }

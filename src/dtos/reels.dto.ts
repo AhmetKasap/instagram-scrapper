@@ -1,11 +1,11 @@
 import { IsNotEmpty, IsString, IsNumber } from "class-validator";
 
-export interface ICreateReelDto {
+export interface ICreateReel {
 	username: string;
 	postCount: number;
 }
 
-export class CreateReelDto implements ICreateReelDto {
+export class CreateReelDto implements ICreateReel {
 	@IsString()
 	@IsNotEmpty()
 	username!: string;
@@ -13,4 +13,17 @@ export class CreateReelDto implements ICreateReelDto {
 	@IsNumber()
 	@IsNotEmpty()
 	postCount!: number;
+}
+
+
+export interface IReelsResponse{
+	reelsUrl: string;
+	pubDate?: Date;
+}
+
+
+export interface ISaveReelsData {
+	username: string;
+	reelsUrl: string;
+	pubDate: Date;
 }

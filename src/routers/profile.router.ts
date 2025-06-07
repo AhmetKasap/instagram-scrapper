@@ -3,6 +3,8 @@ import { inject, injectable } from "inversify";
 import type { IRouter } from "../interfaces/router.interface";
 import type { IProfileController } from "../controllers/profile-controller.interface";
 import authMiddleware from "../middlewares/auth.middleware";
+import { ProfileDto } from "../dtos/profile.dto";
+import validationMiddleware from "../middlewares/validation.middleware";
 
 @injectable()
 class ProfileRouter implements IRouter {
@@ -17,6 +19,7 @@ class ProfileRouter implements IRouter {
 	setupRoutes(): void {
 		this.router.get(
 			"/:username",
+			validationMiddleware(ProfileDto, "params"),
 			authMiddleware() as unknown as RequestHandler,
 			this.profileController.getUserProfile.bind(this.profileController),
 		);
